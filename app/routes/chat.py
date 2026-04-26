@@ -34,7 +34,7 @@ def build_context(chunks: list[PortfolioKnowledge]) -> str:
 
 async def stream_groq(messages: list[dict]):
     stream = await groq_client.chat.completions.create(
-        model="llama3-8b-8192",
+        model="llama-3.3-70b-versatile",
         messages=messages,
         stream=True,
         max_tokens=1024,
