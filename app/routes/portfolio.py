@@ -20,8 +20,9 @@ def build_experience_item(item: dict) -> dict:
         "startDate": item.get("startDate"),
         "endDate": item.get("endDate"),
         "isCurrent": item.get("isCurrent", False),
-        "tasks": [t["item"] for t in item.get("tasks", [])],
-        "technologies": [t["name"] for t in item.get("technologies", [])],
+        "link": item.get("link"),
+        "tasks": item.get("tasks", []),
+        "technologies": item.get("technologies", []),
     }
 
 
@@ -31,9 +32,10 @@ def build_project_item(item: dict) -> dict:
         "title": item.get("title"),
         "subtitle": item.get("subtitle"),
         "description": item.get("description"),
+        "slug": item.get("slug"),
         "demo": item.get("demo"),
         "repository": item.get("repository"),
-        "technologies": [t["name"] for t in item.get("technologies", [])],
+        "technologies": item.get("technologies", []),
     }
 
 
