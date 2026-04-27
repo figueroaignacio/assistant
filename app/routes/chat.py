@@ -50,7 +50,7 @@ async def stream_groq(messages: list[dict]):
 async def chat(body: dict, session: AsyncSession = Depends(get_session)):
     user_message = body.get("message", "")
 
-    query_embedding = generate_embedding(user_message)
+    query_embedding = await generate_embedding(user_message)
     chunks = await search_similar(session, query_embedding)
     context = build_context(chunks)
 

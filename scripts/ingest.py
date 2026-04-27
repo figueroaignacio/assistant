@@ -54,7 +54,7 @@ async def ingest():
                         continue
 
                     print(f"  Embedding: {content[:80]}...")
-                    embedding = generate_embedding(content)
+                    embedding = await generate_embedding(content)
 
                     record = PortfolioKnowledge(
                         content=content, category=endpoint, embedding=embedding

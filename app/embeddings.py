@@ -1,16 +1,25 @@
-from functools import lru_cache
+import os
 
-from sentence_transformers import SentenceTransformer
+import httpx
+from dotenv import load_dotenv
 
-MODEL_NAME = "all-MiniLM-L6-v2"
+load_dotenv()
+
+HF_TOKEN = os.getenv("HF_TOKEN")
+MODEL_URL = "https://router.huggingface.co/hf-inference/models/sentence-transformers/all-MiniLM-L6-v2/pipeline/feature-extraction"
 
 
-@lru_cache(maxsize=1)
-def get_model() -> SentenceTransformer:
-    return SentenceTransformer(MODEL_NAME)
+async def generate_embedding(text: str) -> list[float]:
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            MODEL_URL,
+            headers={"Authorization": f"Bearer {HF_TOKEN}"},
+            json={"inputs": text},
+            timeout=30.0,
+        )
+        response.raise_for_status()
+        result = response.json()
 
-
-def generate_embedding(text: str) -> list[float]:
-    model = get_model()
-    embedding = model.encode(text, normalize_embeddings=True)
-    return embedding.tolist()
+        if isinstance(result[0], list):
+            return result[0]
+        return result
