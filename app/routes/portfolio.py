@@ -42,7 +42,11 @@ async def get_projects(locale: str = "en"):
     async with httpx.AsyncClient() as client:
         response = await client.get(
             f"{PAYLOAD_CMS_URL}/projects",
-            params={"locale": locale, "where[_status][equals]": "published"},
+            params={
+                "locale": locale,
+                "where[_status][equals]": "published",
+                "where[locale][equals]": locale,
+            },
         )
         response.raise_for_status()
         docs = response.json().get("docs", [])
@@ -54,7 +58,11 @@ async def get_experience(locale: str = "en"):
     async with httpx.AsyncClient() as client:
         response = await client.get(
             f"{PAYLOAD_CMS_URL}/experience",
-            params={"locale": locale, "where[_status][equals]": "published"},
+            params={
+                "locale": locale,
+                "where[_status][equals]": "published",
+                "where[locale][equals]": locale,
+            },
         )
         response.raise_for_status()
         docs = response.json().get("docs", [])
