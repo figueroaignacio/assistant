@@ -10,6 +10,7 @@ from sqlmodel import select
 from app.database import get_session
 from app.embeddings import generate_embedding
 from app.models import PortfolioKnowledge
+from app.prompts import SYSTEM_PROMPT
 
 load_dotenv()
 
@@ -56,11 +57,7 @@ async def chat(body: dict, session: AsyncSession = Depends(get_session)):
     messages = [
         {
             "role": "system",
-            "content": (
-                "You are an AI assistant for a developer portfolio. "
-                "Answer questions using only the context provided below.\n\n"
-                f"Context:\n{context}"
-            ),
+            "content": SYSTEM_PROMPT + "\n\n" + f"Context:\n{context}",
         },
         {"role": "user", "content": user_message},
     ]
