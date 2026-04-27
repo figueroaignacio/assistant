@@ -36,4 +36,4 @@ app.add_middleware(
 )
 
 app.include_router(chat_router)
-app.include_router(portfolio_router, prefix="/portfolio")
+app.include_router(portfolio_router)
