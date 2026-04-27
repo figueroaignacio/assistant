@@ -69,5 +69,7 @@ async def chat(body: dict, session: AsyncSession = Depends(get_session)):
     }
 
     return StreamingResponse(
-        stream_groq(messages), media_type="text/plain", headers=headers
+        stream_groq(messages),
+        media_type="text/event-stream",
+        headers=headers,
     )
