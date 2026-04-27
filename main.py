@@ -10,7 +10,7 @@ from app.routes.chat import router as chat_router
 
 load_dotenv()
 
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+FRONTEND_URLS = os.getenv("FRONTEND_URL", "http://localhost:3000").split(",")
 
 
 @asynccontextmanager
@@ -23,7 +23,7 @@ app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[FRONTEND_URL],
+    allow_origins=FRONTEND_URLS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
