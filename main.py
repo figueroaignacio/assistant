@@ -4,19 +4,17 @@ from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-from slowapi.util import get_remote_address
 
 from app.database import init_db
+from app.limiter import limiter
 from app.routes.chat import router as chat_router
 from app.routes.portfolio import router as portfolio_router
 
 load_dotenv()
 
 FRONTEND_URLS = os.getenv("FRONTEND_URL", "http://localhost:3000").split(",")
-
-limiter = Limiter(key_func=get_remote_address)
 
 
 @asynccontextmanager
