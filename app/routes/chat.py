@@ -1,7 +1,7 @@
 import os
 
 from dotenv import load_dotenv
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
 from groq import AsyncGroq
 from slowapi import Limiter
@@ -52,7 +52,9 @@ async def stream_groq(messages: list[dict]):
 
 @router.post("/chat", name="chat")
 @limiter.limit("10/minute")
-async def chat(body: dict, session: AsyncSession = Depends(get_session)):
+async def chat(
+    request: Request, body: dict, session: AsyncSession = Depends(get_session)
+):
     user_message = body.get("message", "")
 
     query_embedding = await generate_embedding(user_message)
