@@ -14,8 +14,20 @@ from app.models import PortfolioKnowledge
 load_dotenv()
 
 PAYLOAD_CMS_URL = os.getenv("PAYLOAD_CMS_URL")
-
 ENDPOINTS = ["projects", "experience", "education"]
+
+
+def build_content(item: dict, endpoint: str) -> str:
+    if endpoint == "experience":
+        tasks = " ".join(t["item"] for t in item.get("tasks", []))
+        techs = ", ".join(t["name"] for t in item.get("technologies", []))
+        return (
+            f"{item.get('title', '')} at {item.get('company', '')}. "
+            f"Location: {item.get('location', '')}. "
+            f"Tasks: {tasks}. "
+            f"Technologies: {techs}."
+        )
+    return item.get("description", "") or item.get("content", "")
 
 
 async def fetch_collection(client: httpx.AsyncClient, endpoint: str) -> list[dict]:
@@ -35,12 +47,13 @@ async def ingest():
                 print(f"Found {len(items)} items in {endpoint}")
 
                 for item in items:
-                    content = item.get("description", "") or item.get("content", "")
+                    content = build_content(item, endpoint)
 
                     if not content.strip():
+                        print(f"  Skipping empty item {item.get('id')}")
                         continue
 
-                    print(f"  Embedding: {content[:60]}...")
+                    print(f"  Embedding: {content[:80]}...")
                     embedding = generate_embedding(content)
 
                     record = PortfolioKnowledge(
