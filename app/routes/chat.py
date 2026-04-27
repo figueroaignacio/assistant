@@ -62,4 +62,12 @@ async def chat(body: dict, session: AsyncSession = Depends(get_session)):
         {"role": "user", "content": user_message},
     ]
 
-    return StreamingResponse(stream_groq(messages), media_type="text/plain")
+    headers = {
+        "X-Accel-Buffering": "no",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+    }
+
+    return StreamingResponse(
+        stream_groq(messages), media_type="text/plain", headers=headers
+    )
