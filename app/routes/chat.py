@@ -4,6 +4,8 @@ from dotenv import load_dotenv
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from groq import AsyncGroq
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
@@ -16,6 +18,8 @@ load_dotenv()
 
 router = APIRouter()
 groq_client = AsyncGroq(api_key=os.getenv("GROQ_API_KEY"))
+
+limiter = Limiter(key_func=get_remote_address)
 
 
 async def search_similar(
@@ -46,7 +50,8 @@ async def stream_groq(messages: list[dict]):
             yield delta
 
 
-@router.post("/chat")
+@router.post("/chat", name="chat")
+@limiter.limit("10/minute")
 async def chat(body: dict, session: AsyncSession = Depends(get_session)):
     user_message = body.get("message", "")
 

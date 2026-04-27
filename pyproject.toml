@@ -12,6 +12,7 @@ dependencies = [
     "pgvector>=0.4.2",
     "psycopg2-binary>=2.9.12",
     "python-dotenv>=1.2.2",
+    "slowapi>=0.1.9",
     "sqlmodel>=0.0.38",
     "uvicorn[standard]>=0.46.0",
 ]
