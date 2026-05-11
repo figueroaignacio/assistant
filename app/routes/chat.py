@@ -1,3 +1,5 @@
+import asyncio
+import json
 import os
 
 from dotenv import load_dotenv
@@ -12,6 +14,8 @@ from app.embeddings import generate_embedding
 from app.limiter import limiter
 from app.models import PortfolioKnowledge
 from app.prompts import SYSTEM_PROMPT
+from app.routes.portfolio import get_experience, get_projects
+from app.tools import TOOLS
 
 load_dotenv()
 
@@ -35,16 +39,76 @@ def build_context(chunks: list[PortfolioKnowledge]) -> str:
 
 
 async def stream_groq(messages: list[dict]):
-    stream = await groq_client.chat.completions.create(
+    response = await groq_client.chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=messages,
-        stream=True,
-        max_tokens=1024,
+        stream=False,
+        tools=TOOLS,
+        tool_choice="auto",
     )
-    async for chunk in stream:
-        delta = chunk.choices[0].delta.content
-        if delta:
-            yield delta
+
+    message = response.choices[0].message
+
+    if message.tool_calls:
+        messages.append(
+            {
+                "role": "assistant",
+                "content": message.content,
+                "tool_calls": [
+                    {
+                        "id": tc.id,
+                        "type": tc.type,
+                        "function": {
+                            "name": tc.function.name,
+                            "arguments": tc.function.arguments,
+                        },
+                    }
+                    for tc in message.tool_calls
+                ],
+            }
+        )
+
+        for tool_call in message.tool_calls:
+            func_name = tool_call.function.name
+            try:
+                args = json.loads(tool_call.function.arguments)
+            except Exception:
+                args = {}
+
+            locale = args.get("locale", "en")
+
+            if func_name == "get_projects":
+                result = await get_projects(locale)
+            elif func_name == "get_experience":
+                result = await get_experience(locale)
+            else:
+                result = {"error": "unknown function"}
+
+            messages.append(
+                {
+                    "tool_call_id": tool_call.id,
+                    "role": "tool",
+                    "name": func_name,
+                    "content": json.dumps(result),
+                }
+            )
+
+        stream = await groq_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=messages,
+            stream=True,
+            max_tokens=1024,
+        )
+        async for chunk in stream:
+            delta = chunk.choices[0].delta.content
+            if delta:
+                yield delta
+    else:
+        if message.content:
+            chunk_size = 15
+            for i in range(0, len(message.content), chunk_size):
+                yield message.content[i : i + chunk_size]
+                await asyncio.sleep(0.01)
 
 
 @router.post("/chat")
