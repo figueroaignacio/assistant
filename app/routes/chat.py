@@ -1,11 +1,11 @@
 import asyncio
 import json
-import os
 
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
-from groq import AsyncGroq
+from langchain_core.messages import BaseMessage, ToolMessage
+from langchain_groq import ChatGroq
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
@@ -13,14 +13,12 @@ from app.database import get_session
 from app.embeddings import generate_embedding
 from app.limiter import limiter
 from app.models import PortfolioKnowledge
-from app.prompts import SYSTEM_PROMPT
-from app.routes.portfolio import get_experience, get_projects
+from app.prompts import CHAT_PROMPT
 from app.tools import TOOLS
 
 load_dotenv()
 
 router = APIRouter()
-groq_client = AsyncGroq(api_key=os.getenv("GROQ_API_KEY"))
 
 
 async def search_similar(
@@ -38,76 +36,43 @@ def build_context(chunks: list[PortfolioKnowledge]) -> str:
     return "\n\n".join(f"[{chunk.category}] {chunk.content}" for chunk in chunks)
 
 
-async def stream_groq(messages: list[dict]):
-    response = await groq_client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
-        messages=messages,
-        stream=False,
-        tools=TOOLS,
-        tool_choice="auto",
-    )
+async def stream_groq(messages: list[BaseMessage]):
+    llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0)
+    llm_with_tools = llm.bind_tools(TOOLS)
 
-    message = response.choices[0].message
+    response = await llm_with_tools.ainvoke(messages)
 
-    if message.tool_calls:
-        messages.append(
-            {
-                "role": "assistant",
-                "content": message.content,
-                "tool_calls": [
-                    {
-                        "id": tc.id,
-                        "type": tc.type,
-                        "function": {
-                            "name": tc.function.name,
-                            "arguments": tc.function.arguments,
-                        },
-                    }
-                    for tc in message.tool_calls
-                ],
-            }
-        )
+    if response.tool_calls:
+        messages.append(response)
 
-        for tool_call in message.tool_calls:
-            func_name = tool_call.function.name
-            try:
-                args = json.loads(tool_call.function.arguments)
-            except Exception:
-                args = {}
+        tools_by_name = {t.name: t for t in TOOLS}
 
-            locale = args.get("locale", "en")
+        for tool_call in response.tool_calls:
+            func_name = tool_call["name"]
+            args = tool_call["args"]
 
-            if func_name == "get_projects":
-                result = await get_projects(locale)
-            elif func_name == "get_experience":
-                result = await get_experience(locale)
+            tool_impl = tools_by_name.get(func_name)
+            if tool_impl:
+                result_str = await tool_impl.ainvoke(args)
             else:
-                result = {"error": "unknown function"}
+                result_str = json.dumps({"error": "unknown function"})
 
             messages.append(
-                {
-                    "tool_call_id": tool_call.id,
-                    "role": "tool",
-                    "name": func_name,
-                    "content": json.dumps(result),
-                }
+                ToolMessage(
+                    tool_call_id=tool_call["id"],
+                    name=func_name,
+                    content=result_str,
+                )
             )
 
-        stream = await groq_client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=messages,
-            stream=True,
-            max_tokens=1024,
-        )
-        async for chunk in stream:
-            delta = chunk.choices[0].delta.content
-            if delta:
-                yield delta
+        async for chunk in llm_with_tools.astream(messages):
+            if chunk.content:
+                yield chunk.content
     else:
-        if message.content:
+        if response.content:
             chunk_size = 15
-            for i in range(0, len(message.content), chunk_size):
-                yield message.content[i : i + chunk_size]
+            for i in range(0, len(response.content), chunk_size):
+                yield response.content[i : i + chunk_size]
                 await asyncio.sleep(0.01)
 
 
@@ -122,13 +87,7 @@ async def chat(
     chunks = await search_similar(session, query_embedding)
     context = build_context(chunks)
 
-    messages = [
-        {
-            "role": "system",
-            "content": SYSTEM_PROMPT + "\n\n" + f"Context:\n{context}",
-        },
-        {"role": "user", "content": user_message},
-    ]
+    messages = CHAT_PROMPT.format_messages(context=context, user_message=user_message)
 
     headers = {
         "X-Accel-Buffering": "no",
