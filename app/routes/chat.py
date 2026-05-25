@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
 from langchain_core.messages import BaseMessage, ToolMessage
-from langchain_groq import ChatGroq
+from langchain_google_genai import ChatGoogleGenerativeAI
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
@@ -36,8 +36,28 @@ def build_context(chunks: list[PortfolioKnowledge]) -> str:
     return "\n\n".join(f"[{chunk.category}] {chunk.content}" for chunk in chunks)
 
 
-async def stream_groq(messages: list[BaseMessage]):
-    llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0)
+def _extract_text(content) -> str:
+    """Safely extract a plain string from a LangChain message content.
+
+    langchain-google-genai can return content as:
+      - a plain str
+      - a list of dicts like [{"type": "text", "text": "..."}]
+    """
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for item in content:
+            if isinstance(item, dict) and item.get("type") == "text":
+                parts.append(item.get("text", ""))
+            elif isinstance(item, str):
+                parts.append(item)
+        return "".join(parts)
+    return ""
+
+
+async def stream_gemini(messages: list[BaseMessage]):
+    llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0)
     llm_with_tools = llm.bind_tools(TOOLS)
 
     response = await llm_with_tools.ainvoke(messages)
@@ -66,13 +86,15 @@ async def stream_groq(messages: list[BaseMessage]):
             )
 
         async for chunk in llm_with_tools.astream(messages):
-            if chunk.content:
-                yield chunk.content
+            text = _extract_text(chunk.content)
+            if text:
+                yield text
     else:
-        if response.content:
+        text = _extract_text(response.content)
+        if text:
             chunk_size = 15
-            for i in range(0, len(response.content), chunk_size):
-                yield response.content[i : i + chunk_size]
+            for i in range(0, len(text), chunk_size):
+                yield text[i : i + chunk_size]
                 await asyncio.sleep(0.01)
 
 
@@ -96,7 +118,7 @@ async def chat(
     }
 
     return StreamingResponse(
-        stream_groq(messages),
+        stream_gemini(messages),
         media_type="text/event-stream",
         headers=headers,
     )
