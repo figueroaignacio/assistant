@@ -4,7 +4,7 @@ import json
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
-from langchain_core.messages import BaseMessage, ToolMessage
+from langchain_core.messages import BaseMessage, ToolMessage, HumanMessage, AIMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
@@ -104,12 +104,26 @@ async def chat(
     request: Request, body: dict, session: AsyncSession = Depends(get_session)
 ):
     user_message = body.get("message", "")
+    history_raw = body.get("history", [])
+
+    history_messages = []
+    for msg in history_raw[-20:]:  # Keep last 20 messages for context
+        role = msg.get("role")
+        content = msg.get("content", "")
+        if role == "user":
+            history_messages.append(HumanMessage(content=content))
+        elif role == "assistant":
+            history_messages.append(AIMessage(content=content))
 
     query_embedding = await generate_embedding(user_message)
     chunks = await search_similar(session, query_embedding)
     context = build_context(chunks)
 
-    messages = CHAT_PROMPT.format_messages(context=context, user_message=user_message)
+    messages = CHAT_PROMPT.format_messages(
+        context=context,
+        history=history_messages,
+        user_message=user_message,
+    )
 
     headers = {
         "X-Accel-Buffering": "no",
