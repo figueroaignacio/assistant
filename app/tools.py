@@ -27,4 +27,19 @@ async def get_experience_tool(locale: str = "en") -> str:
     return json.dumps(result)
 
 
-TOOLS = [get_projects_tool, get_experience_tool]
+@tool("send_contact_email")
+async def send_contact_email_tool(name: str, email: str, message: str) -> str:
+    """Trigger the sending of a contact email with the name, email, and message body.
+    Call this tool when you have collected all three pieces of information from the user
+    and they want to send the message.
+
+    Args:
+        name: The name of the sender.
+        email: The email address of the sender.
+        message: The content of the message.
+    """
+    payload = {"name": name, "email": email, "message": message}
+    return f"[SEND_EMAIL_TRIGGER]{json.dumps(payload)}"
+
+
+TOOLS = [get_projects_tool, get_experience_tool, send_contact_email_tool]
