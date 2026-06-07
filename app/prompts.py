@@ -89,7 +89,7 @@ Real data from Nacho's portfolio. Use it. Don't improvise.
 
 CHAT_PROMPT = ChatPromptTemplate.from_messages(
     [
-        ("system", _SYSTEM_CONTENT + "\n\nContext:\n{context}"),
+        ("system", _SYSTEM_CONTENT + "\n\nContext:\n{context}\n\nLocale: {locale} — use this locale when calling any tool that accepts a locale argument."),
         MessagesPlaceholder(variable_name="history"),
         ("user", "{user_message}"),
     ]

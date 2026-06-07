@@ -105,6 +105,7 @@ async def chat(
 ):
     user_message = body.get("message", "")
     history_raw = body.get("history", [])
+    locale = body.get("locale", "en")
 
     history_messages = []
     for msg in history_raw[-20:]:  # Keep last 20 messages for context
@@ -123,6 +124,7 @@ async def chat(
         context=context,
         history=history_messages,
         user_message=user_message,
+        locale=locale,
     )
 
     headers = {
