@@ -11,6 +11,7 @@ from app.database import init_db
 from app.limiter import limiter
 from app.routes.chat import router as chat_router
 from app.routes.portfolio import router as portfolio_router
+from app.routes.root import router as root_router
 
 load_dotenv()
 
@@ -35,5 +36,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(root_router)
 app.include_router(chat_router)
 app.include_router(portfolio_router)
