@@ -47,11 +47,11 @@ async def root():
     ENDPOINTS
   ──────────────────────────────────────────────────────────────────────
 
-    POST  /api/v1/chat              → Talk to Nacho's AI brain
-    GET   /api/v1/portfolio         → Portfolio data
-    GET   /api/v1/portfolio/work    → Work experience
-    GET   /api/v1/portfolio/skills  → Skills
-    GET   /api/v1/portfolio/bio     → Bio
+    POST  /chat                     → Talk to Nacho's AI brain
+    GET   /portfolio/projects       → Projects
+    GET   /portfolio/experience     → Work experience
+    POST  /portfolio/summarize      → Summarize a project body
+    GET   /docs                     → Swagger UI
 
   ──────────────────────────────────────────────────────────────────────
     STATUS   RUNNING (probably)
