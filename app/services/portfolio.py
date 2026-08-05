@@ -9,14 +9,14 @@ never on each other.
 import os
 import re
 
-import httpx
 from dotenv import load_dotenv
+
+from app.http import get_client
 
 load_dotenv()
 
 
 def _base_url() -> str:
-    """Read the CMS base URL lazily so import order never matters."""
     url = os.getenv("PAYLOAD_CMS_URL")
     if not url:
         raise RuntimeError("PAYLOAD_CMS_URL is not set")
@@ -52,17 +52,16 @@ def build_project_item(item: dict) -> dict:
 
 
 async def _fetch_published(collection: str, locale: str) -> list[dict]:
-    async with httpx.AsyncClient(timeout=15.0) as client:
-        response = await client.get(
-            f"{_base_url()}/{collection}",
-            params={
-                "locale": locale,
-                "where[_status][equals]": "published",
-                "where[locale][equals]": locale,
-            },
-        )
-        response.raise_for_status()
-        return response.json().get("docs", [])
+    response = await get_client().get(
+        f"{_base_url()}/{collection}",
+        params={
+            "locale": locale,
+            "where[_status][equals]": "published",
+            "where[locale][equals]": locale,
+        },
+    )
+    response.raise_for_status()
+    return response.json().get("docs", [])
 
 
 async def fetch_projects(locale: str = "en") -> list[dict]:

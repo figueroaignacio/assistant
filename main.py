@@ -11,6 +11,7 @@ from slowapi import _rate_limit_exceeded_handler  # noqa: E402
 from slowapi.errors import RateLimitExceeded  # noqa: E402
 
 from app.database import init_db  # noqa: E402
+from app.http import close_client  # noqa: E402
 from app.limiter import limiter  # noqa: E402
 from app.routes.chat import router as chat_router  # noqa: E402
 from app.routes.portfolio import router as portfolio_router  # noqa: E402
@@ -23,6 +24,7 @@ FRONTEND_URLS = os.getenv("FRONTEND_URL", "http://localhost:3000").split(",")
 async def lifespan(app: FastAPI):
     await init_db()
     yield
+    await close_client()
 
 
 app = FastAPI(lifespan=lifespan)
