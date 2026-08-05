@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 from app.prompts import SUMMARIZE_SYSTEM_PROMPT
+from app.schemas import SummarizeRequest
 from app.services.portfolio import (
     clean_text,
     extract_text_from_lexical,
@@ -23,29 +24,11 @@ async def get_experience(locale: str = "en"):
 
 
 @router.post("/summarize")
-async def summarize_project(request: Request):
-    """
-    Summarize a project's Lexical rich-text body using Gemini Flash.
-
-    Expects JSON body:
-        {
-            "body": <Payload Lexical root node>,
-            "locale": "en" | "es"   (optional, defaults to "en")
-        }
-    """
-    payload = await request.json()
-    lexical_body = payload.get("body")
-    locale = payload.get("locale", "en")
-
-    if not lexical_body or not isinstance(lexical_body, dict):
-        raise HTTPException(
-            status_code=422,
-            detail="Missing or invalid 'body' field. Expected a Payload Lexical root node.",
-        )
-
+async def summarize_project(body: SummarizeRequest):
+    """Summarize a project's Lexical rich-text body using Gemini Flash."""
     # Payload CMS Lexical format: { root: { children: [...], ... } }
     # Unwrap the outer wrapper so extract_text_from_lexical sees the actual root node.
-    root_node = lexical_body.get("root", lexical_body)
+    root_node = body.body.get("root", body.body)
 
     plain_text = clean_text(extract_text_from_lexical(root_node))
 
@@ -58,7 +41,7 @@ async def summarize_project(request: Request):
     llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.3)
 
     prompt = [
-        ("system", SUMMARIZE_SYSTEM_PROMPT.format(locale=locale)),
+        ("system", SUMMARIZE_SYSTEM_PROMPT.format(locale=body.locale)),
         ("human", plain_text),
     ]
 

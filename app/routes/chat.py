@@ -4,7 +4,7 @@ import json
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
-from langchain_core.messages import BaseMessage, ToolMessage, HumanMessage, AIMessage
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
@@ -14,11 +14,14 @@ from app.embeddings import generate_embedding
 from app.limiter import limiter
 from app.models import PortfolioKnowledge
 from app.prompts import CHAT_PROMPT
+from app.schemas import ChatMessage, ChatRequest
 from app.tools import TOOLS
 
 load_dotenv()
 
 router = APIRouter()
+
+HISTORY_LIMIT = 20
 
 
 async def search_similar(
@@ -34,6 +37,16 @@ async def search_similar(
 
 def build_context(chunks: list[PortfolioKnowledge]) -> str:
     return "\n\n".join(f"[{chunk.category}] {chunk.content}" for chunk in chunks)
+
+
+def build_history(messages: list[ChatMessage]) -> list[BaseMessage]:
+    history: list[BaseMessage] = []
+    for msg in messages[-HISTORY_LIMIT:]:
+        if msg.role == "user":
+            history.append(HumanMessage(content=msg.content))
+        elif msg.role == "assistant":
+            history.append(AIMessage(content=msg.content))
+    return history
 
 
 def _extract_text(content) -> str:
@@ -101,30 +114,16 @@ async def stream_gemini(messages: list[BaseMessage]):
 @router.post("/chat")
 @limiter.limit("10/minute")
 async def chat(
-    request: Request, body: dict, session: AsyncSession = Depends(get_session)
+    request: Request, body: ChatRequest, session: AsyncSession = Depends(get_session)
 ):
-    user_message = body.get("message", "")
-    history_raw = body.get("history", [])
-    locale = body.get("locale", "en")
-
-    history_messages = []
-    for msg in history_raw[-20:]:  # Keep last 20 messages for context
-        role = msg.get("role")
-        content = msg.get("content", "")
-        if role == "user":
-            history_messages.append(HumanMessage(content=content))
-        elif role == "assistant":
-            history_messages.append(AIMessage(content=content))
-
-    query_embedding = await generate_embedding(user_message)
+    query_embedding = await generate_embedding(body.message)
     chunks = await search_similar(session, query_embedding)
-    context = build_context(chunks)
 
     messages = CHAT_PROMPT.format_messages(
-        context=context,
-        history=history_messages,
-        user_message=user_message,
-        locale=locale,
+        context=build_context(chunks),
+        history=build_history(body.history),
+        user_message=body.message,
+        locale=body.locale,
     )
 
     headers = {
