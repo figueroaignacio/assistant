@@ -1,6 +1,7 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from langchain_google_genai import ChatGoogleGenerativeAI
 
+from app.limiter import limiter
 from app.prompts import SUMMARIZE_SYSTEM_PROMPT
 from app.schemas import SummarizeRequest
 from app.services.portfolio import (
@@ -24,10 +25,10 @@ async def get_experience(locale: str = "en"):
 
 
 @router.post("/summarize")
-async def summarize_project(body: SummarizeRequest):
+@limiter.limit("5/minute")
+async def summarize_project(request: Request, body: SummarizeRequest):
     """Summarize a project's Lexical rich-text body using Gemini Flash."""
-    # Payload CMS Lexical format: { root: { children: [...], ... } }
-    # Unwrap the outer wrapper so extract_text_from_lexical sees the actual root node.
+
     root_node = body.body.get("root", body.body)
 
     plain_text = clean_text(extract_text_from_lexical(root_node))
