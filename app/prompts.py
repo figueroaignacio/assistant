@@ -95,6 +95,14 @@ CHAT_PROMPT = ChatPromptTemplate.from_messages(
     ]
 )
 
+SUMMARIZE_SYSTEM_PROMPT = """\
+You are a concise technical writer. Given the full body of a software project description, \
+write a clear, engaging 2-3 sentence summary that captures what the project does, \
+the main technology or approach used, and the key outcome or problem it solves. \
+Write in the same language as the content (locale hint: {locale}). \
+Return only the summary text — no headings, no bullet points, no extra commentary.\
+"""
+
 ANALYSIS_SYSTEM_PROMPT = """You are an expert technical recruiter analyzing a job description or company role requirements and comparing them with Nacho's portfolio (projects and work experience).
 
 Analyze the match and provide a structured suitability report in the requested language (locale: {locale}).

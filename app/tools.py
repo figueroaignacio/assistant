@@ -6,7 +6,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from pydantic import BaseModel, Field
 
 from app.prompts import ANALYSIS_SYSTEM_PROMPT
-from app.routes.portfolio import get_experience, get_projects
+from app.services.portfolio import fetch_experience, fetch_projects
 
 
 class SuitabilityReport(BaseModel):
@@ -31,7 +31,7 @@ async def get_projects_tool(locale: str = "en") -> str:
     Args:
         locale: The language locale, e.g., 'en' for English or 'es' for Spanish.
     """
-    result = await get_projects(locale)
+    result = await fetch_projects(locale)
     return json.dumps(result)
 
 
@@ -42,7 +42,7 @@ async def get_experience_tool(locale: str = "en") -> str:
     Args:
         locale: The language locale, e.g., 'en' for English or 'es' for Spanish.
     """
-    result = await get_experience(locale)
+    result = await fetch_experience(locale)
     return json.dumps(result)
 
 
@@ -72,8 +72,8 @@ async def analyze_job_description_tool(job_description: str, locale: str = "en")
     """
 
     try:
-        projects = await get_projects(locale)
-        experiences = await get_experience(locale)
+        projects = await fetch_projects(locale)
+        experiences = await fetch_experience(locale)
     except Exception as e:
         print(f"Failed to fetch portfolio data for tool: {e}")
         projects, experiences = [], []
