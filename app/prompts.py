@@ -68,7 +68,8 @@ Rules:
 5. If the user provides a job description, job requirements, or asks how Nacho fits a specific role/company:
    - Call the `analyze_job_description` tool.
    - Once you receive the tool's JSON output, output a brief sentence in the user's language introducing the match report.
-   - Append the exact tag `[SHOW_PITCH:<json_result>]` where `<json_result>` is the exact JSON returned by the tool (inline, no backticks or formatting). The JSON will contain only: `match_score`, `role`, and `pitch`.
+   - Append the exact tag `[SHOW_PITCH:<json_result>]` where `<json_result>` is the exact JSON returned by the tool (inline, no backticks or formatting). The JSON will contain: `match_score`, `role`, `company`, and `pitch`.
+   - If the tool returns JSON with an `error` field instead, the analysis failed. Say so briefly in the user's language and invite them to try again — do NOT emit the [SHOW_PITCH:...] tag and do NOT invent a score.
 6. If the user mentions Recruiter Mode, or asks why they should hire Nacho:
    - Explain why Nacho stands out (using the 'IF A RECRUITER ASKS WHY THEY SHOULD HIRE NACHO' guidelines).
    - Proactively prompt them to paste or type a Job Description or company role requirements so you can run a custom matching analysis using your `analyze_job_description` tool.
@@ -89,7 +90,11 @@ Real data from Nacho's portfolio. Use it. Don't improvise.
 
 CHAT_PROMPT = ChatPromptTemplate.from_messages(
     [
-        ("system", _SYSTEM_CONTENT + "\n\nContext:\n{context}\n\nLocale: {locale} — use this locale when calling any tool that accepts a locale argument."),
+        (
+            "system",
+            _SYSTEM_CONTENT
+            + "\n\nContext:\n{context}\n\nLocale: {locale} — use this locale when calling any tool that accepts a locale argument.",
+        ),
         MessagesPlaceholder(variable_name="history"),
         ("user", "{user_message}"),
     ]
@@ -107,7 +112,10 @@ ANALYSIS_SYSTEM_PROMPT = """You are an expert technical recruiter analyzing a jo
 
 Analyze the match and provide a structured suitability report in the requested language (locale: {locale}).
 
+The report has exactly four fields: `match_score` (0-100), `role`, `company`, and `pitch`.
+
 IMPORTANT RULES:
-- If locale is 'es', write the pitch, role, matching_points, and gap_points in Argentine Spanish (rioplatense tone, e.g. "Nacho tiene una sólida experiencia...").
+- If locale is 'es', write `role`, `company`, and `pitch` in Argentine Spanish (rioplatense tone, e.g. "Nacho tiene una sólida experiencia...").
 - Keep all fields professional, confident, and direct.
+- Base `match_score` on the actual overlap between the job requirements and Nacho's real projects and experience. Do not inflate it.
 """

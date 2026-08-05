@@ -74,9 +74,9 @@ async def analyze_job_description_tool(job_description: str, locale: str = "en")
     try:
         projects = await fetch_projects(locale)
         experiences = await fetch_experience(locale)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         print(f"Failed to fetch portfolio data for tool: {e}")
-        projects, experiences = [], []
+        return json.dumps({"error": "portfolio_unavailable"})
 
     system_instruction = ANALYSIS_SYSTEM_PROMPT.format(locale=locale)
 
@@ -98,15 +98,11 @@ Compare it against this Job Description and return a structured report:
     try:
         report = await structured_llm.ainvoke(messages)
         return report.model_dump_json()
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
+        # Never fabricate a score here: a made-up match percentage shown to a
+        # recruiter is worse than admitting the analysis failed.
         print(f"Error during structured suitability analysis: {e}")
-        fallback = SuitabilityReport(
-            match_score=80,
-            role="Developer",
-            company="the company",
-            pitch="Nacho is a highly skilled Fullstack Developer and AI Engineer who builds end-to-end applications.",
-        )
-        return fallback.model_dump_json()
+        return json.dumps({"error": "analysis_failed"})
 
 
 TOOLS = [
