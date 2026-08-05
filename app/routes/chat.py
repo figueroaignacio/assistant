@@ -142,8 +142,10 @@ async def chat(
         "Connection": "keep-alive",
     }
 
+    # Plain text, not SSE: the body is a raw token stream with no `data:` frames,
+    # so labelling it text/event-stream misleads proxies and clients.
     return StreamingResponse(
         stream_agent(messages),
-        media_type="text/event-stream",
+        media_type="text/plain; charset=utf-8",
         headers=headers,
     )
